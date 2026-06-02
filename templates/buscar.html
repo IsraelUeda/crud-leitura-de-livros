@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscar Livro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <div class="container header-row">
+      <div>
+        <h1>Buscar Open Library</h1>
+        <p>Pesquise livros por título e importe metadados sem digitar tudo.</p>
+      </div>
+      <a class="button" href="{{ url_for('index') }}">Voltar</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <form method="post" class="form-card">
+      <label>
+        Título para busca
+        <input type="text" name="titulo" value="{{ query|default('') }}" required>
+      </label>
+      <div class="form-actions">
+        <button class="button" type="submit">Buscar</button>
+      </div>
+    </form>
+
+    {% if erro %}
+      <div class="error-message">{{ erro }}</div>
+    {% endif %}
+
+    {% if resultados %}
+      <div class="results-grid">
+        {% for item in resultados %}
+          <div class="card">
+            <h3>{{ item.titulo }}</h3>
+            <p><strong>Autor:</strong> {{ item.autor }}</p>
+            <p><strong>Páginas:</strong> {{ item.paginas or '-' }}</p>
+            <p><strong>Ano:</strong> {{ item.ano or '-' }}</p>
+            <p><strong>ISBN:</strong> {{ item.isbn or '-' }}</p>
+            {% if item.capa_url %}
+              <img src="{{ item.capa_url }}" alt="Capa" class="cover-image">
+            {% endif %}
+            <form method="post" action="{{ url_for('importar') }}">
+              <input type="hidden" name="titulo" value="{{ item.titulo }}">
+              <input type="hidden" name="autor" value="{{ item.autor }}">
+              <input type="hidden" name="paginas" value="{{ item.paginas or '' }}">
+              <input type="hidden" name="ano" value="{{ item.ano or '' }}">
+              <input type="hidden" name="isbn" value="{{ item.isbn or '' }}">
+              <input type="hidden" name="capa_url" value="{{ item.capa_url or '' }}">
+              <input type="hidden" name="status" value="Quero ler">
+              <button class="button" type="submit">Importar</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhes do Livro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <div class="container header-row">
+      <div>
+        <h1>{{ livro['titulo'] }}</h1>
+        <p>{{ livro['autor'] }}</p>
+      </div>
+      <div class="actions">
+        <a class="button" href="{{ url_for('editar', id=livro['id']) }}">Editar</a>
+        <a class="button secondary" href="{{ url_for('index') }}">Voltar</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="form-card">
+      <p><strong>Status:</strong> {{ livro['status'] }}</p>
+      <p><strong>Nota:</strong> {{ livro['nota'] if livro['nota'] is not none else '-' }}</p>
+      <p><strong>Páginas:</strong> {{ livro['paginas'] or '-' }}</p>
+      <p><strong>Ano:</strong> {{ livro['ano'] or '-' }}</p>
+      <p><strong>ISBN:</strong> {{ livro['isbn'] or '-' }}</p>
+      {% if livro['capa_url'] %}
+        <img src="{{ livro['capa_url'] }}" alt="Capa" class="cover-large">
+      {% endif %}
+    </div>
+
+    <div class="form-card">
+      <h2>PDF</h2>
+      {% if livro['pdf_path'] %}
+        <a class="button" href="{{ url_for('pdf_view', id=livro['id']) }}" target="_blank">Abrir PDF</a>
+        <div class="pdf-viewer">
+          <iframe src="{{ url_for('pdf_view', id=livro['id']) }}" width="100%" height="600"></iframe>
+        </div>
+      {% else %}
+        <p>Nenhum PDF enviado.</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('upload_pdf', id=livro['id']) }}" enctype="multipart/form-data" class="form-card">
+        <label>
+          Enviar PDF
+          <input type="file" name="pdf" accept="application/pdf" required>
+        </label>
+        <button class="button" type="submit">Enviar PDF</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

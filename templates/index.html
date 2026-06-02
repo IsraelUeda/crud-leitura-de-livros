@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CRUD Leitura de Livros</title>
+  <title>Meus Livros</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header>
     <div class="container header-row">
       <div>
-        <h1>CRUD de Leitura de Livros</h1>
-        <p>Cadastre, visualize, edite e exclua livros do seu registro.</p>
+        <h1>Meus Livros</h1>
+        <p>Lista de livros cadastrados com metadados e PDF.</p>
       </div>
-      <a class="button" href="{{ url_for('criar') }}">+ Novo Livro</a>
+      <div class="actions">
+        <a class="button" href="{{ url_for('adicionar') }}">Adicionar Livro</a>
+        <a class="button" href="{{ url_for('buscar') }}">Buscar Open Library</a>
+      </div>
     </div>
   </header>
 
@@ -25,31 +28,38 @@
             <th>Título</th>
             <th>Autor</th>
             <th>Status</th>
+            <th>Páginas</th>
+            <th>Ano</th>
+            <th>ISBN</th>
             <th>Nota</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           {% for livro in livros %}
-          <tr>
-            <td>{{ livro['titulo'] }}</td>
-            <td>{{ livro['autor'] }}</td>
-            <td>{{ livro['status'] }}</td>
-            <td>{{ livro['nota'] if livro['nota'] is not none else '-' }}</td>
-            <td class="actions-cell">
-              <a class="small-button" href="{{ url_for('editar', id=livro['id']) }}">Editar</a>
-              <form method="post" action="{{ url_for('deletar', id=livro['id']) }}" onsubmit="return confirm('Deseja realmente excluir este livro?');">
-                <button class="small-button danger" type="submit">Excluir</button>
-              </form>
-            </td>
-          </tr>
+            <tr>
+              <td>{{ livro['titulo'] }}</td>
+              <td>{{ livro['autor'] }}</td>
+              <td>{{ livro['status'] }}</td>
+              <td>{{ livro['paginas'] or '-' }}</td>
+              <td>{{ livro['ano'] or '-' }}</td>
+              <td>{{ livro['isbn'] or '-' }}</td>
+              <td>{{ livro['nota'] if livro['nota'] is not none else '-' }}</td>
+              <td class="actions-cell">
+                <a class="small-button" href="{{ url_for('detalhes', id=livro['id']) }}">Detalhes</a>
+                <a class="small-button" href="{{ url_for('editar', id=livro['id']) }}">Editar</a>
+                <form method="post" action="{{ url_for('deletar', id=livro['id']) }}" onsubmit="return confirm('Excluir este livro?');">
+                  <button class="small-button danger" type="submit">Excluir</button>
+                </form>
+              </td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>
     {% else %}
       <div class="empty-state">
-        <p>Não há livros cadastrados ainda.</p>
-        <a class="button" href="{{ url_for('criar') }}">Cadastrar primeiro livro</a>
+        <p>Nenhum livro cadastrado ainda.</p>
+        <a class="button" href="{{ url_for('buscar') }}">Buscar na Open Library</a>
       </div>
     {% endif %}
   </main>

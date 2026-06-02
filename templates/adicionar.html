@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Editar Livro</title>
+  <title>Adicionar Livro</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header>
     <div class="container header-row">
       <div>
-        <h1>Editar Livro</h1>
-        <p>Atualize as informações do livro.</p>
+        <h1>Adicionar Livro</h1>
+        <p>Cadastre um livro manualmente no banco de dados.</p>
       </div>
       <a class="button" href="{{ url_for('index') }}">Voltar</a>
     </div>
@@ -24,39 +24,40 @@
     <form method="post" class="form-card">
       <label>
         Título
-        <input type="text" name="titulo" value="{{ livro['titulo'] }}" required>
+        <input type="text" name="titulo" value="{{ titulo|default('') }}" required>
       </label>
       <label>
         Autor
-        <input type="text" name="autor" value="{{ livro['autor'] }}" required>
+        <input type="text" name="autor" value="{{ autor|default('') }}" required>
       </label>
       <label>
         Status
         <select name="status" required>
-          <option value="Quero ler" {{ 'selected' if livro['status'] == 'Quero ler' }}>Quero ler</option>
-          <option value="Lendo" {{ 'selected' if livro['status'] == 'Lendo' }}>Lendo</option>
-          <option value="Lido" {{ 'selected' if livro['status'] == 'Lido' }}>Lido</option>
+          <option value="" disabled {{ 'selected' if not status }}>Escolha o status</option>
+          <option value="Quero ler" {{ 'selected' if status == 'Quero ler' }}>Quero ler</option>
+          <option value="Lendo" {{ 'selected' if status == 'Lendo' }}>Lendo</option>
+          <option value="Lido" {{ 'selected' if status == 'Lido' }}>Lido</option>
         </select>
       </label>
       <label>
         Nota
-        <input type="number" name="nota" min="0" max="10" value="{{ livro['nota'] if livro['nota'] is not none else '' }}">
+        <input type="number" name="nota" min="0" max="10" value="{{ nota|default('') }}">
       </label>
       <label>
         Páginas
-        <input type="number" name="paginas" min="1" value="{{ livro['paginas'] or '' }}">
+        <input type="number" name="paginas" min="1" value="{{ paginas|default('') }}">
       </label>
       <label>
         Ano
-        <input type="number" name="ano" min="0" value="{{ livro['ano'] or '' }}">
+        <input type="number" name="ano" min="0" value="{{ ano|default('') }}">
       </label>
       <label>
         ISBN
-        <input type="text" name="isbn" value="{{ livro['isbn'] or '' }}">
+        <input type="text" name="isbn" value="{{ isbn|default('') }}">
       </label>
       <label>
         URL da capa
-        <input type="text" name="capa_url" value="{{ livro['capa_url'] or '' }}">
+        <input type="text" name="capa_url" value="{{ capa_url|default('') }}">
       </label>
       <div class="form-actions">
         <button class="button" type="submit">Salvar</button>

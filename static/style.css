@@ -83,6 +83,7 @@ td {
 
 .actions-cell {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }
@@ -121,7 +122,8 @@ label {
 
 input[type="text"],
 input[type="number"],
-select {
+select,
+input[type="file"] {
   width: 100%;
   padding: 0.85rem 1rem;
   border-radius: 10px;
@@ -132,7 +134,8 @@ select {
 
 input[type="text"]:focus,
 input[type="number"]:focus,
-select:focus {
+select:focus,
+input[type="file"]:focus {
   outline: 2px solid #3a7bd5;
   border-color: transparent;
 }
@@ -157,6 +160,55 @@ select:focus {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 14px 45px rgba(40, 55, 93, 0.08);
+}
+
+.results-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 14px 45px rgba(40, 55, 93, 0.08);
+}
+
+.cover-image {
+  width: 100%;
+  max-width: 180px;
+  display: block;
+  margin: 1rem 0;
+  border-radius: 10px;
+}
+
+.cover-large {
+  width: 100%;
+  max-width: 280px;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+.pdf-viewer {
+  margin-top: 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.details-page {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .details-page {
+    grid-template-columns: minmax(0, 1fr) 1fr;
+  }
+  .results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
