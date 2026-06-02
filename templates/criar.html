@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastrar Livro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <div class="container header-row">
+      <div>
+        <h1>Novo Livro</h1>
+        <p>Adicione um livro ao seu registro de leitura.</p>
+      </div>
+      <a class="button" href="{{ url_for('index') }}">Voltar</a>
+    </div>
+  </header>
+
+  <main class="container">
+    {% if erro %}
+      <div class="error-message">{{ erro }}</div>
+    {% endif %}
+    <form method="post" class="form-card">
+      <label>
+        Título
+        <input type="text" name="titulo" value="{{ titulo|default('') }}" required>
+      </label>
+      <label>
+        Autor
+        <input type="text" name="autor" value="{{ autor|default('') }}" required>
+      </label>
+      <label>
+        Status
+        <select name="status" required>
+          <option value="" disabled {{ 'selected' if not status }}>Escolha o status</option>
+          <option value="Lido" {{ 'selected' if status == 'Lido' }}>Lido</option>
+          <option value="Lendo" {{ 'selected' if status == 'Lendo' }}>Lendo</option>
+          <option value="Quero ler" {{ 'selected' if status == 'Quero ler' }}>Quero ler</option>
+        </select>
+      </label>
+      <label>
+        Nota
+        <input type="number" name="nota" min="0" max="10" value="{{ nota|default('') }}">
+      </label>
+      <div class="form-actions">
+        <button class="button" type="submit">Salvar</button>
+        <a class="button secondary" href="{{ url_for('index') }}">Cancelar</a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>
