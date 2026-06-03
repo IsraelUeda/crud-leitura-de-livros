@@ -7,6 +7,21 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/estante.css') }}">
 </head>
 <body>
+  
+  <header>
+    <div class="header-row">
+      <div>
+        <h1>Meus Livros</h1>
+        <p>Lista de livros cadastrados com metadados e PDF.</p>
+      </div>
+      <div class="actions">
+        <a class="button" href="{{ url_for('estante') }}">Minha Estante</a>
+        <a class="button" href="{{ url_for('adicionar') }}">Adicionar Livro</a>
+        <a class="button" href="{{ url_for('buscar') }}">Buscar Open Library</a>
+      </div>
+    </div>
+  </header>
+
   <div id="minha-estante"></div>
   <script>
     window.INITIAL_LIVROS = {{ livros|tojson }};
