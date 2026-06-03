@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Editar Livro</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estante.css') }}">
 </head>
 <body>
   <header>
-    <div class="container header-row">
+    <div class="header-row">
       <div>
         <h1>Editar Livro</h1>
         <p>Atualize as informações do livro.</p>
@@ -17,7 +17,7 @@
     </div>
   </header>
 
-  <main class="container">
+  <main>
     {% if erro %}
       <div class="error-message">{{ erro }}</div>
     {% endif %}
