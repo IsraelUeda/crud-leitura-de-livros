@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minha Estante</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estante.css') }}">
+</head>
+<body>
+  <div id="minha-estante"></div>
+  <script>
+    window.INITIAL_LIVROS = {{ livros|tojson }};
+    window.API = {
+      addBook: "{{ url_for('estante_api_add') }}",
+      deleteBookPrefix: "{{ url_for('estante_api_deletar', id=0)|replace('/0','/') }}"
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/estante.js') }}"></script>
+</body>
+</html>

@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 import sqlite3
 import os
 import json
+import time
 import urllib.parse
 import urllib.request
 
@@ -47,6 +48,16 @@ def init_db():
     )
     conn.commit()
     conn.close()
+    ensure_schema()
+
+
+def ensure_schema():
+    conn = get_db_connection()
+    columns = [row['name'] for row in conn.execute('PRAGMA table_info(livros)').fetchall()]
+    if 'cor' not in columns:
+        conn.execute('ALTER TABLE livros ADD COLUMN cor TEXT')
+        conn.commit()
+    conn.close()
 
 
 @app.route('/')
@@ -55,6 +66,70 @@ def index():
     livros = conn.execute('SELECT * FROM livros ORDER BY id DESC').fetchall()
     conn.close()
     return render_template('index.html', livros=livros)
+
+
+@app.route('/estante')
+def estante():
+    conn = get_db_connection()
+    livros = conn.execute('SELECT * FROM livros ORDER BY id DESC').fetchall()
+    conn.close()
+    livros = [dict(livro) for livro in livros]
+    return render_template('estante.html', livros=livros)
+
+
+@app.route('/estante/api/livros', methods=['POST'])
+def estante_api_add():
+    titulo = request.form.get('titulo', '').strip()
+    autor = request.form.get('autor', '').strip()
+    cor = request.form.get('color', '').strip()
+    if not titulo or not autor:
+        return jsonify({'success': False, 'error': 'Título e autor são obrigatórios.'}), 400
+
+    arquivo = request.files.get('pdf')
+    filename = None
+    pdf_name = None
+    if arquivo and arquivo.filename and allowed_file(arquivo.filename):
+        pdf_name = arquivo.filename
+        filename = secure_filename(f"{int(time.time())}_{arquivo.filename}")
+        arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    conn = get_db_connection()
+    cursor = conn.execute(
+        'INSERT INTO livros (titulo, autor, status, nota, paginas, isbn, ano, capa_url, pdf_path, cor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (titulo, autor, 'Quero ler', None, None, None, None, None, filename, cor or None)
+    )
+    conn.commit()
+    livro_id = cursor.lastrowid
+    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (livro_id,)).fetchone()
+    conn.close()
+
+    livro_data = dict(livro)
+    livro_data['title'] = livro_data.pop('titulo')
+    livro_data['author'] = livro_data.pop('autor')
+    livro_data['color'] = livro_data.get('cor') or ''
+    livro_data['pdfUrl'] = url_for('pdf_view', id=livro_id) if livro_data.get('pdf_path') else ''
+    livro_data['pdfName'] = pdf_name or ''
+    return jsonify({'success': True, 'book': livro_data})
+
+
+@app.route('/estante/api/deletar/<int:id>', methods=['POST'])
+def estante_api_deletar(id):
+    conn = get_db_connection()
+    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
+    if livro is None:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Livro não encontrado.'}), 404
+
+    if livro['pdf_path']:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], livro['pdf_path']))
+        except OSError:
+            pass
+
+    conn.execute('DELETE FROM livros WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 
 @app.route('/adicionar', methods=['GET', 'POST'])
