@@ -99,8 +99,10 @@
     }
     const rows = [];
     for (let i = 0; i < filtered.length; i += SHELF_CAP) rows.push(filtered.slice(i, i + SHELF_CAP));
-    rows.forEach(rowBooks => {
-      const shelf = document.createElement('div'); shelf.className = 'prateleira';
+    rows.forEach((rowBooks, rowIndex) => {
+      const shelf = document.createElement('div');
+      shelf.className = 'prateleira';
+      shelf.dataset.label = `Prateleira ${rowIndex + 1}`;
       const livrosDiv = document.createElement('div'); livrosDiv.className = 'prateleira-livros';
       rowBooks.forEach(b => livrosDiv.appendChild(renderLombada(b)));
       shelf.appendChild(livrosDiv);

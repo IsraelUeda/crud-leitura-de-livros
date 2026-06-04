@@ -61,8 +61,30 @@
   font-family: 'Playfair Display', serif; font-size: 20px;
   font-style: italic; color: #a08060;
 }
-.prateleira { margin-bottom: 32px; }
+.prateleira {
+  position: relative;
+  margin-bottom: 42px;
+}
+.prateleira::before {
+  content: attr(data-label);
+  position: absolute;
+  left: 24px;
+  top: -16px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(26,18,8,0.92);
+  color: #c8923a;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .prateleira-livros {
+  position: relative; display: flex; align-items: flex-end;
+  flex-wrap: wrap; gap: 2px; padding: 24px 24px 12px; min-height: 260px;
+  background: linear-gradient(180deg, #110d06 0%, #17110a 100%);
+  background-image: repeating-linear-gradient(90deg, rgba(200,146,58,0.015) 0px, rgba(200,146,58,0.015) 1px, transparent 1px, transparent 72px);
+  border-radius: 22px;
+}
   position: relative; display: flex; align-items: flex-end;
   flex-wrap: wrap; gap: 2px; padding: 24px 24px 12px; min-height: 260px;
   background: linear-gradient(180deg, #110d06 0%, #17110a 100%);
