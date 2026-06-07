@@ -85,11 +85,6 @@
   background-image: repeating-linear-gradient(90deg, rgba(200,146,58,0.015) 0px, rgba(200,146,58,0.015) 1px, transparent 1px, transparent 72px);
   border-radius: 22px;
 }
-  position: relative; display: flex; align-items: flex-end;
-  flex-wrap: wrap; gap: 2px; padding: 24px 24px 12px; min-height: 260px;
-  background: linear-gradient(180deg, #110d06 0%, #17110a 100%);
-  background-image: repeating-linear-gradient(90deg, rgba(200,146,58,0.015) 0px, rgba(200,146,58,0.015) 1px, transparent 1px, transparent 72px);
-}
 .prateleira-livros::after {
   content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: 75%; height: 192px;
@@ -134,6 +129,7 @@
   font-family: 'Lato', sans-serif; color: rgba(240,230,208,0.65);
   font-size: 8px; letter-spacing: 0.05em; text-align: center;
 }
+.livro-deco-top, .livro-deco-bottom, .livro-topo { display: none !important; }
 .livro-deco-top, .livro-deco-bottom { position: absolute; left: 0; right: 0; height: 1px; background: #c8923a; }
 .livro-deco-top { top: 10px; opacity: 0.5; }
 .livro-deco-bottom { bottom: 10px; opacity: 0.5; }
