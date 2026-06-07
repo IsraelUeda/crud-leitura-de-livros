@@ -1,0 +1,20 @@
+# Python stuff
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Virtual environments
+venv/
+.venv/
+
+# Database and local postgres cluster
+database.db
+pgdata/
+pgpw.txt
+
+# IDE/editor files
+.vscode/
+.idea/

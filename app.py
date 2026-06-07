@@ -1,15 +1,26 @@
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
-import sqlite3
 import os
 import json
 import time
 import urllib.parse
 import urllib.request
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, Text
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.path.join(BASE_DIR, 'database.db')
+SQLITE_PATH = os.path.join(BASE_DIR, 'database.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+
+# Read DB URL from env; default to SQLite for development
+DATABASE_URL = os.environ.get('DATABASE_URL', f'sqlite:///{SQLITE_PATH}')
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith('sqlite') else {})
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -21,60 +32,50 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+class Livro(Base):
+    __tablename__ = 'livros'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    titulo = Column(Text, nullable=False)
+    autor = Column(Text, nullable=False)
+    status = Column(Text, nullable=False)
+    nota = Column(Integer)
+    paginas = Column(Integer)
+    isbn = Column(Text)
+    ano = Column(Integer)
+    capa_url = Column(Text)
+    pdf_path = Column(Text)
+    cor = Column(Text)
 
 
 def init_db():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    conn = get_db_connection()
-    conn.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS livros (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT NOT NULL,
-            autor TEXT NOT NULL,
-            status TEXT NOT NULL,
-            nota INTEGER,
-            paginas INTEGER,
-            isbn TEXT,
-            ano INTEGER,
-            capa_url TEXT,
-            pdf_path TEXT
-        )
-        '''
-    )
-    conn.commit()
-    conn.close()
-    ensure_schema()
-
-
-def ensure_schema():
-    conn = get_db_connection()
-    columns = [row['name'] for row in conn.execute('PRAGMA table_info(livros)').fetchall()]
-    if 'cor' not in columns:
-        conn.execute('ALTER TABLE livros ADD COLUMN cor TEXT')
-        conn.commit()
-    conn.close()
+    Base.metadata.create_all(bind=engine)
 
 
 @app.route('/')
 def index():
-    conn = get_db_connection()
-    livros = conn.execute('SELECT * FROM livros ORDER BY id DESC').fetchall()
-    conn.close()
-    return render_template('index.html', livros=livros)
+    session = SessionLocal()
+    try:
+        livros = session.query(Livro).order_by(Livro.id.desc()).all()
+        livros = [livro.__dict__ for livro in livros]
+        for l in livros:
+            l.pop('_sa_instance_state', None)
+        return render_template('index.html', livros=livros)
+    finally:
+        session.close()
 
 
 @app.route('/estante')
 def estante():
-    conn = get_db_connection()
-    livros = conn.execute('SELECT * FROM livros ORDER BY id DESC').fetchall()
-    conn.close()
-    livros = [dict(livro) for livro in livros]
-    return render_template('estante.html', livros=livros)
+    session = SessionLocal()
+    try:
+        livros = session.query(Livro).order_by(Livro.id.desc()).all()
+        livros = [livro.__dict__ for livro in livros]
+        for l in livros:
+            l.pop('_sa_instance_state', None)
+        return render_template('estante.html', livros=livros)
+    finally:
+        session.close()
 
 
 @app.route('/estante/api/livros', methods=['POST'])
@@ -92,44 +93,53 @@ def estante_api_add():
         pdf_name = arquivo.filename
         filename = secure_filename(f"{int(time.time())}_{arquivo.filename}")
         arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-    conn = get_db_connection()
-    cursor = conn.execute(
-        'INSERT INTO livros (titulo, autor, status, nota, paginas, isbn, ano, capa_url, pdf_path, cor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (titulo, autor, 'Quero ler', None, None, None, None, None, filename, cor or None)
-    )
-    conn.commit()
-    livro_id = cursor.lastrowid
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (livro_id,)).fetchone()
-    conn.close()
-
-    livro_data = dict(livro)
-    livro_data['title'] = livro_data.pop('titulo')
-    livro_data['author'] = livro_data.pop('autor')
-    livro_data['color'] = livro_data.get('cor') or ''
-    livro_data['pdfUrl'] = url_for('pdf_view', id=livro_id) if livro_data.get('pdf_path') else ''
-    livro_data['pdfName'] = pdf_name or ''
-    return jsonify({'success': True, 'book': livro_data})
+    session = SessionLocal()
+    try:
+        novo = Livro(
+            titulo=titulo,
+            autor=autor,
+            status='Quero ler',
+            nota=None,
+            paginas=None,
+            isbn=None,
+            ano=None,
+            capa_url=None,
+            pdf_path=filename,
+            cor=cor or None
+        )
+        session.add(novo)
+        session.commit()
+        session.refresh(novo)
+        livro_data = {
+            'id': novo.id,
+            'title': novo.titulo,
+            'author': novo.autor,
+            'color': novo.cor or '',
+            'pdfUrl': url_for('pdf_view', id=novo.id) if novo.pdf_path else '',
+            'pdfName': pdf_name or ''
+        }
+        return jsonify({'success': True, 'book': livro_data})
+    finally:
+        session.close()
 
 
 @app.route('/estante/api/deletar/<int:id>', methods=['POST'])
 def estante_api_deletar(id):
-    conn = get_db_connection()
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
-    if livro is None:
-        conn.close()
-        return jsonify({'success': False, 'error': 'Livro não encontrado.'}), 404
-
-    if livro['pdf_path']:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], livro['pdf_path']))
-        except OSError:
-            pass
-
-    conn.execute('DELETE FROM livros WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    session = SessionLocal()
+    try:
+        livro = session.query(Livro).filter(Livro.id == id).first()
+        if livro is None:
+            return jsonify({'success': False, 'error': 'Livro não encontrado.'}), 404
+        if livro.pdf_path:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], livro.pdf_path))
+            except OSError:
+                pass
+        session.delete(livro)
+        session.commit()
+        return jsonify({'success': True})
+    finally:
+        session.close()
 
 
 @app.route('/adicionar', methods=['GET', 'POST'])
@@ -152,14 +162,24 @@ def adicionar():
         paginas_val = int(paginas) if paginas.isdigit() else None
         ano_val = int(ano) if ano.isdigit() else None
 
-        conn = get_db_connection()
-        conn.execute(
-            'INSERT INTO livros (titulo, autor, status, nota, paginas, isbn, ano, capa_url, pdf_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            (titulo, autor, status, nota_val, paginas_val, isbn or None, ano_val, capa_url or None, None)
-        )
-        conn.commit()
-        conn.close()
-        return redirect(url_for('index'))
+        session = SessionLocal()
+        try:
+            novo = Livro(
+                titulo=titulo,
+                autor=autor,
+                status=status,
+                nota=nota_val,
+                paginas=paginas_val,
+                isbn=isbn or None,
+                ano=ano_val,
+                capa_url=capa_url or None,
+                pdf_path=None
+            )
+            session.add(novo)
+            session.commit()
+            return redirect(url_for('index'))
+        finally:
+            session.close()
 
     return render_template('adicionar.html')
 
@@ -212,108 +232,129 @@ def importar():
     paginas_val = int(paginas) if paginas.isdigit() else None
     ano_val = int(ano) if ano.isdigit() else None
 
-    conn = get_db_connection()
-    conn.execute(
-        'INSERT INTO livros (titulo, autor, status, nota, paginas, isbn, ano, capa_url, pdf_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (titulo, autor, status, nota_val, paginas_val, isbn or None, ano_val, capa_url or None, None)
-    )
-    conn.commit()
-    conn.close()
-    return redirect(url_for('index'))
+    session = SessionLocal()
+    try:
+        novo = Livro(
+            titulo=titulo,
+            autor=autor,
+            status=status,
+            nota=nota_val,
+            paginas=paginas_val,
+            isbn=isbn or None,
+            ano=ano_val,
+            capa_url=capa_url or None,
+            pdf_path=None
+        )
+        session.add(novo)
+        session.commit()
+        return redirect(url_for('index'))
+    finally:
+        session.close()
 
 
 @app.route('/detalhes/<int:id>')
 def detalhes(id):
-    conn = get_db_connection()
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
-    conn.close()
-    if livro is None:
-        return redirect(url_for('index'))
-    return render_template('detalhes.html', livro=livro)
+    session = SessionLocal()
+    try:
+        livro = session.query(Livro).filter(Livro.id == id).first()
+        if livro is None:
+            return redirect(url_for('index'))
+        return render_template('detalhes.html', livro=livro)
+    finally:
+        session.close()
 
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
-    conn = get_db_connection()
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
+    session = SessionLocal()
+    try:
+        livro = session.query(Livro).filter(Livro.id == id).first()
 
-    if livro is None:
-        conn.close()
-        return redirect(url_for('index'))
+        if livro is None:
+            return redirect(url_for('index'))
 
-    if request.method == 'POST':
-        titulo = request.form.get('titulo', '').strip()
-        autor = request.form.get('autor', '').strip()
-        status = request.form.get('status', '').strip()
-        nota = request.form.get('nota', '').strip()
-        paginas = request.form.get('paginas', '').strip()
-        isbn = request.form.get('isbn', '').strip()
-        ano = request.form.get('ano', '').strip()
-        capa_url = request.form.get('capa_url', '').strip()
+        if request.method == 'POST':
+            titulo = request.form.get('titulo', '').strip()
+            autor = request.form.get('autor', '').strip()
+            status = request.form.get('status', '').strip()
+            nota = request.form.get('nota', '').strip()
+            paginas = request.form.get('paginas', '').strip()
+            isbn = request.form.get('isbn', '').strip()
+            ano = request.form.get('ano', '').strip()
+            capa_url = request.form.get('capa_url', '').strip()
 
-        if not titulo or not autor or not status:
-            erro = 'Preencha título, autor e status.'
-            conn.close()
-            return render_template('editar.html', livro=livro, erro=erro)
+            if not titulo or not autor or not status:
+                erro = 'Preencha título, autor e status.'
+                return render_template('editar.html', livro=livro, erro=erro)
 
-        nota_val = int(nota) if nota.isdigit() else None
-        paginas_val = int(paginas) if paginas.isdigit() else None
-        ano_val = int(ano) if ano.isdigit() else None
+            nota_val = int(nota) if nota.isdigit() else None
+            paginas_val = int(paginas) if paginas.isdigit() else None
+            ano_val = int(ano) if ano.isdigit() else None
 
-        conn.execute(
-            'UPDATE livros SET titulo = ?, autor = ?, status = ?, nota = ?, paginas = ?, isbn = ?, ano = ?, capa_url = ? WHERE id = ?',
-            (titulo, autor, status, nota_val, paginas_val, isbn or None, ano_val, capa_url or None, id)
-        )
-        conn.commit()
-        conn.close()
-        return redirect(url_for('index'))
+            livro.titulo = titulo
+            livro.autor = autor
+            livro.status = status
+            livro.nota = nota_val
+            livro.paginas = paginas_val
+            livro.isbn = isbn or None
+            livro.ano = ano_val
+            livro.capa_url = capa_url or None
+            session.commit()
+            return redirect(url_for('index'))
 
-    conn.close()
-    return render_template('editar.html', livro=livro)
+        return render_template('editar.html', livro=livro)
+    finally:
+        session.close()
 
 
 @app.route('/upload_pdf/<int:id>', methods=['POST'])
 def upload_pdf(id):
-    conn = get_db_connection()
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
-    if livro is None:
-        conn.close()
-        return redirect(url_for('index'))
+    session = SessionLocal()
+    try:
+        livro = session.query(Livro).filter(Livro.id == id).first()
+        if livro is None:
+            return redirect(url_for('index'))
 
-    arquivo = request.files.get('pdf')
-    if arquivo and allowed_file(arquivo.filename):
-        filename = secure_filename(f'{id}_{arquivo.filename}')
-        destino = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        arquivo.save(destino)
-        conn.execute('UPDATE livros SET pdf_path = ? WHERE id = ?', (filename, id))
-        conn.commit()
-    conn.close()
-    return redirect(url_for('detalhes', id=id))
+        arquivo = request.files.get('pdf')
+        if arquivo and allowed_file(arquivo.filename):
+            filename = secure_filename(f'{id}_{arquivo.filename}')
+            destino = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            arquivo.save(destino)
+            livro.pdf_path = filename
+            session.commit()
+        return redirect(url_for('detalhes', id=id))
+    finally:
+        session.close()
 
 
 @app.route('/pdf/<int:id>')
 def pdf_view(id):
-    conn = get_db_connection()
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
-    conn.close()
-    if livro is None or not livro['pdf_path']:
-        return redirect(url_for('detalhes', id=id))
-    return send_from_directory(app.config['UPLOAD_FOLDER'], livro['pdf_path'])
+    session = SessionLocal()
+    try:
+        livro = session.query(Livro).filter(Livro.id == id).first()
+        if livro is None or not livro.pdf_path:
+            return redirect(url_for('detalhes', id=id))
+        return send_from_directory(app.config['UPLOAD_FOLDER'], livro.pdf_path)
+    finally:
+        session.close()
 
 
 @app.route('/deletar/<int:id>', methods=['POST'])
 def deletar(id):
-    conn = get_db_connection()
-    livro = conn.execute('SELECT * FROM livros WHERE id = ?', (id,)).fetchone()
-    if livro and livro['pdf_path']:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], livro['pdf_path']))
-        except OSError:
-            pass
-    conn.execute('DELETE FROM livros WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('index'))
+    session = SessionLocal()
+    try:
+        livro = session.query(Livro).filter(Livro.id == id).first()
+        if livro and livro.pdf_path:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], livro.pdf_path))
+            except OSError:
+                pass
+        if livro:
+            session.delete(livro)
+            session.commit()
+        return redirect(url_for('index'))
+    finally:
+        session.close()
 
 
 if __name__ == '__main__':
