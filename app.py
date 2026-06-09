@@ -7,18 +7,24 @@ import urllib.parse
 import urllib.request
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, Text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SQLITE_PATH = os.path.join(BASE_DIR, 'database.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
-# Read DB URL from env; default to SQLite for development
-DATABASE_URL = os.environ.get('DATABASE_URL', f'sqlite:///{SQLITE_PATH}')
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise RuntimeError(
+        'DATABASE_URL must be set to a PostgreSQL URL, e.g. '
+        'postgresql://user:password@host:port/dbname'
+    )
+if DATABASE_URL.startswith('sqlite'):
+    raise RuntimeError('SQLite is not supported in this deployment. Please set DATABASE_URL to PostgreSQL.')
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith('sqlite') else {})
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
@@ -49,7 +55,14 @@ class Livro(Base):
 
 def init_db():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except OperationalError as error:
+        raise RuntimeError(
+            'Unable to initialize the PostgreSQL database. '
+            'Confirm that PostgreSQL is running and DATABASE_URL is correct. '
+            f'Original error: {error}'
+        ) from error
 
 
 @app.route('/')
@@ -69,10 +82,17 @@ def index():
 def estante():
     session = SessionLocal()
     try:
-        livros = session.query(Livro).order_by(Livro.id.desc()).all()
-        livros = [livro.__dict__ for livro in livros]
-        for l in livros:
-            l.pop('_sa_instance_state', None)
+        livros = []
+        for livro in session.query(Livro).order_by(Livro.id.desc()).all():
+            livro_data = livro.__dict__.copy()
+            livro_data.pop('_sa_instance_state', None)
+            if livro.pdf_path:
+                livro_data['pdfUrl'] = url_for('pdf_view', id=livro.id)
+                livro_data['pdfName'] = os.path.basename(livro.pdf_path)
+            else:
+                livro_data['pdfUrl'] = ''
+                livro_data['pdfName'] = ''
+            livros.append(livro_data)
         return render_template('estante.html', livros=livros)
     finally:
         session.close()

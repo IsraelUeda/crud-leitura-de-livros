@@ -19,7 +19,7 @@ Ela permite adicionar, editar, visualizar, deletar e pesquisar livros, além de 
 
 - Python 3
 - Flask
-- SQLite
+- PostgreSQL
 - HTML/CSS/JavaScript
 
 ## Estrutura do projeto
@@ -28,7 +28,6 @@ Ela permite adicionar, editar, visualizar, deletar e pesquisar livros, além de 
 - `templates/` - páginas HTML
 - `static/` - arquivos estáticos (CSS, JS)
 - `uploads/` - PDFs enviados via formulário
-- `database.db` - banco de dados SQLite gerado automaticamente
 
 ## Requisitos
 
@@ -44,25 +43,31 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-2. Instale o Flask:
+2. Instale as dependências:
 
 ```bash
-pip install Flask
+pip install -r requirements.txt
 ```
 
-3. Execute a aplicação:
+3. Configure a variável de ambiente `DATABASE_URL` com a URL do PostgreSQL, por exemplo:
+
+```bash
+export DATABASE_URL='postgresql://user:password@host:port/dbname'
+```
+
+4. Execute a aplicação:
 
 ```bash
 python app.py
 ```
 
-4. Acesse no navegador:
+5. Acesse no navegador:
 
 ```
 http://127.0.0.1:5000/
 ```
 
-> O banco de dados `database.db` e a pasta `uploads/` são criados automaticamente na primeira execução.
+> A pasta `uploads/` é criada automaticamente na primeira execução. O banco é gerenciado no PostgreSQL definido em `DATABASE_URL`.
 
 ## Como usar
 
